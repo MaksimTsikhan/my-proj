@@ -57,8 +57,7 @@
 	(def eps2 0.15)
 	(loop [potentials potentials-ar
 		clusters clusters-ar
-        potentials-of-clusters potentials-of-clusters-ar
-        i 0]
+        potentials-of-clusters potentials-of-clusters-ar]
         (let [
         	p1 (first potentials-of-clusters)
         	pk (last potentials-of-clusters)
@@ -80,7 +79,7 @@
 				(new-potentials (assoc new-potentials possible-cluster 0)))))
 			(if (to-continue)
 				clusters
-				(recur new-potentials clusters potentials-of-clusters (inc i))))))
+				(recur new-potentials clusters potentials-of-clusters)))))
 
 
 (defn output [clusters features]
