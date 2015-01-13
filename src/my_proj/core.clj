@@ -4,6 +4,11 @@
   (:require [clojure.math.numeric-tower :as math])
   (:require [clojure.java.io :as io]))
 
+(def ra 2)
+(def alpha (/ 4 (* ra ra)))
+(def rb (* 1.5 ra))
+(def betta (/ 4 (* rb rb)))
+
 (defn get-lines-from-file [file]
 	(with-open [reader (io/reader file)]
     	(doall (line-seq reader))))
@@ -43,17 +48,40 @@
 (defn get-new-potentials [potentials features pk xk method]	
 	(map (fn [pi xi] (- pi (get-subtrahend-i pk xi xk method))) potentials features))
 
+(defn get-min-distance [xk clusters points method]
+	(let [distances (map (fn [i] (method xk (points i))) clusters)]
+		(second (apply min-key second (map-indexed vector distances)))))
+
 (defn get-clusters [potentials-ar points clusters-ar potentials-of-clusters-ar method]
-	(loop [potentials potentials-of-clusters-ar
+	(def eps1 0.5)
+	(def eps2 0.15)
+	(loop [potentials potentials-ar
 		clusters clusters-ar
-        potentials-of-clusters potentials-of-clusters-ar]
-        (let [new-potentials (get-new-potentials potentials points (last potentials-of-clusters) (points (last clusters)) method)
+        potentials-of-clusters potentials-of-clusters-ar
+        i 0]
+        (let [
+        	p1 (first potentials-of-clusters)
+        	pk (last potentials-of-clusters)
+        	k-index (last clusters)
+        	xk (points k-index)
+        	new-potentials (get-new-potentials potentials points pk xk method)
         	max-p (get-max-potential new-potentials)
 			possible-potential (second max-p)
-			possible-cluster (first max-p)]
-			(if (= 11 10)
+			possible-cluster (first max-p)
+			is-center (> possible-potential (* eps1 p1))
+			to-continue is-center]
+
+			(if (= is-center true)
+			(clusters (conj clusters possible-cluster)
+			(potentials-of-clusters (conj potentials-of-clusters possible-potential)))
+			(let [dmin (get-min-distance xk clusters points method)]
+				(if (and (>= possible-potential (* eps2 p1)) (>= (+ (/ dmin ra) (/ possible-potential p1))))
+				(to-continue true)
+				(new-potentials (assoc new-potentials possible-cluster 0)))))
+			(if (to-continue)
 				clusters
-				(recur new-potentials (conj clusters possible-cluster) (conj potentials-of-clusters possible-potential))))))
+				(recur new-potentials clusters potentials-of-clusters (inc i))))))
+
 
 (defn output [clusters features]
 	(map (fn [x]
@@ -64,10 +92,6 @@
 	clusters))
 
 (defn -main [file method]
-	(def ra 2)
-	(def alpha (/ 4 (* ra ra)))
-	(def rb (* 1.5 ra))
-	(def betta (/ 4 (* rb rb)))
 	(let [lines (get-lines-from-file file)
 		points (get-points lines)
 		points (into [] points)
@@ -78,6 +102,6 @@
 		potentials-of-clusters (conj potentials-of-clusters (second max-p))
 		clusters '[]
 		clusters (conj clusters (first max-p))]
-		(get-clusters potentials points clusters potentials-of-clusters get-distance)
-		;;(output clusters points)
+		clusters (get-clusters potentials points clusters potentials-of-clusters get-distance)
+		(output clusters points)
 		))
